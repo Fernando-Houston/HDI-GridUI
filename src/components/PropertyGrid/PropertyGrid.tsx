@@ -38,41 +38,7 @@ export const PropertyGrid: React.FC<PropertyGridProps> = ({
   const [isDraggingProperty, setIsDraggingProperty] = useState<string | null>(null);
   const [propertyDragOffset, setPropertyDragOffset] = useState({ x: 0, y: 0 });
 
-  // Canvas setup and resize handling
-  const resizeCanvas = useCallback(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    const rect = canvas.getBoundingClientRect();
-    canvas.width = rect.width * window.devicePixelRatio;
-    canvas.height = rect.height * window.devicePixelRatio;
-    
-    const ctx = canvas.getContext('2d');
-    if (ctx) {
-      ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
-    }
-    
-    drawGrid();
-  }, [viewport, properties, hoveredProperty, selectedPropertyId]);
-
-  useEffect(() => {
-    // Detect mobile device
-    const checkMobile = () => {
-      setIsMobile('ontouchstart' in window || navigator.maxTouchPoints > 0);
-    };
-    
-    checkMobile();
-    resizeCanvas();
-    window.addEventListener('resize', resizeCanvas);
-    window.addEventListener('orientationchange', resizeCanvas);
-    
-    return () => {
-      window.removeEventListener('resize', resizeCanvas);
-      window.removeEventListener('orientationchange', resizeCanvas);
-    };
-  }, [resizeCanvas]);
-
-  // Draw grid and properties
+  // Draw grid and properties first
   const drawGrid = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -112,91 +78,123 @@ export const PropertyGrid: React.FC<PropertyGridProps> = ({
       ctx.stroke();
     }
 
-    // Draw properties - only show leads if showOnlyLeads is true
-    const propertiesToDraw = showOnlyLeads ? leads : properties;
-    propertiesToDraw.forEach(property => {
+    // Draw properties as geometric shapes (only leads if showOnlyLeads is true)
+    const propertiesToShow = showOnlyLeads ? leads : [...leads, ...properties];
+    
+    propertiesToShow.forEach((property) => {
+      if (!property.gridPosition) return;
+
       const x = property.gridPosition.x * viewport.scale + viewport.offsetX;
       const y = property.gridPosition.y * viewport.scale + viewport.offsetY;
-      const size = property.gridPosition.size * viewport.scale;
+      const size = (property.gridPosition.size || 50) * viewport.scale;
 
-      // Skip if property is outside viewport
-      if (x + size < 0 || x - size > width || y + size < 0 || y - size > height) {
-        return;
-      }
+      // Skip if outside viewport
+      if (x < -size || x > width + size || y < -size || y > height + size) return;
 
-      // Set color based on property type
-      let fillColor: string;
-      switch (property.propertyType) {
-        case 'residential':
-          fillColor = 'rgba(0, 212, 255, 0.7)'; // Teal
-          break;
-        case 'commercial':
-          fillColor = 'rgba(102, 126, 234, 0.7)'; // Blue
-          break;
-        case 'land':
-          fillColor = 'rgba(0, 255, 136, 0.7)'; // Green
-          break;
-        default:
-          fillColor = 'rgba(160, 160, 176, 0.7)'; // Gray
-      }
+      const isLead = leads.some(lead => lead.id === property.id);
+      const isSelected = selectedPropertyId === property.id;
+      const isHovered = hoveredProperty === property.id;
 
-      // Apply hover or selection effects
-      if (hoveredProperty === property.id) {
-        ctx.shadowColor = '#00d4ff';
-        ctx.shadowBlur = 15;
-        fillColor = fillColor.replace('0.7', '0.9');
-      } else if (selectedPropertyId === property.id) {
-        ctx.shadowColor = '#00ff88';
-        ctx.shadowBlur = 10;
-        fillColor = fillColor.replace('0.7', '0.8');
+      ctx.save();
+
+      // Set colors based on property type and state
+      if (isSelected) {
+        ctx.fillStyle = '#00d9ff';
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 3;
+      } else if (isHovered) {
+        ctx.fillStyle = isLead ? '#10b981' : '#3b82f6';
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 2;
       } else {
-        ctx.shadowBlur = 0;
+        ctx.fillStyle = isLead ? '#059669' : '#1d4ed8';
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+        ctx.lineWidth = 1;
       }
 
-      ctx.fillStyle = fillColor;
-
-      // Draw shape based on property type
-      if (property.propertyType === 'commercial') {
-        // Rectangle for commercial
-        const rectWidth = size;
-        const rectHeight = size * 0.67;
-        ctx.fillRect(x - rectWidth/2, y - rectHeight/2, rectWidth, rectHeight);
-      } else if (property.propertyType === 'land') {
-        // Polygon for land (hexagon)
-        ctx.beginPath();
+      // Draw shape based on whether it's a lead (hexagon) or regular property (square)
+      ctx.beginPath();
+      if (isLead) {
+        // Draw hexagon for leads
+        const hexRadius = size / 2;
         for (let i = 0; i < 6; i++) {
           const angle = (Math.PI / 3) * i;
-          const px = x + Math.cos(angle) * (size/2);
-          const py = y + Math.sin(angle) * (size/2);
-          if (i === 0) ctx.moveTo(px, py);
-          else ctx.lineTo(px, py);
+          const hexX = x + hexRadius * Math.cos(angle);
+          const hexY = y + hexRadius * Math.sin(angle);
+          if (i === 0) {
+            ctx.moveTo(hexX, hexY);
+          } else {
+            ctx.lineTo(hexX, hexY);
+          }
         }
         ctx.closePath();
-        ctx.fill();
       } else {
-        // Square for residential
-        ctx.fillRect(x - size/2, y - size/2, size, size);
+        // Draw square for regular properties
+        ctx.rect(x - size/2, y - size/2, size, size);
       }
 
-      // Add value label for larger properties
-      if (size > 40) {
-        ctx.shadowBlur = 0;
+      ctx.fill();
+      ctx.stroke();
+
+      // Draw property value text
+      if (size > 30) {
         ctx.fillStyle = '#ffffff';
-        ctx.font = `${Math.max(10, size/6)}px Inter, sans-serif`;
+        ctx.font = `${Math.max(10, size * 0.2)}px Arial`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         
-        const valueText = property.marketValue > 0 
-          ? `$${Math.round(property.marketValue / 1000)}K`
-          : 'Est.';
+        const value = property.marketValue || 0;
+        const displayValue = value >= 1000000 
+          ? `$${Math.round(value / 1000000)}M`
+          : value >= 1000 
+          ? `$${Math.round(value / 1000)}K`
+          : `$${Math.round(value / 1000)}K`;
         
-        ctx.fillText(valueText, x, y);
+        ctx.fillText(displayValue, x, y);
       }
 
-      // Reset shadow
-      ctx.shadowBlur = 0;
+      ctx.restore();
     });
-  }, [viewport, properties, hoveredProperty, selectedPropertyId]);
+  }, [viewport, properties, leads, hoveredProperty, selectedPropertyId, showOnlyLeads]);
+
+  // Canvas setup and resize handling
+  const resizeCanvas = useCallback(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const rect = canvas.getBoundingClientRect();
+    canvas.width = rect.width * window.devicePixelRatio;
+    canvas.height = rect.height * window.devicePixelRatio;
+    
+    const ctx = canvas.getContext('2d');
+    if (ctx) {
+      ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+    }
+    
+    drawGrid();
+  }, [drawGrid]);
+
+  useEffect(() => {
+    // Detect mobile device
+    const checkMobile = () => {
+      setIsMobile('ontouchstart' in window || navigator.maxTouchPoints > 0);
+    };
+    
+    checkMobile();
+    resizeCanvas();
+    window.addEventListener('resize', resizeCanvas);
+    window.addEventListener('orientationchange', resizeCanvas);
+    
+    return () => {
+      window.removeEventListener('resize', resizeCanvas);
+      window.removeEventListener('orientationchange', resizeCanvas);
+    };
+  }, [resizeCanvas]);
+
+  // Redraw when viewport or data changes
+  useEffect(() => {
+    drawGrid();
+  }, [drawGrid]);
 
   // Mouse event handlers
   const handleMouseDown = (e: React.MouseEvent) => {

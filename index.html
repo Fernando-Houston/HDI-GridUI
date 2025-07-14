@@ -10,6 +10,28 @@
   </head>
   <body>
     <div id="root"></div>
+    <script>
+      // Fix for Safari/older browsers - requestIdleCallback polyfill
+      if (!window.requestIdleCallback) {
+        window.requestIdleCallback = function(callback, options) {
+          const start = Date.now();
+          return setTimeout(function() {
+            callback({
+              didTimeout: false,
+              timeRemaining: function() {
+                return Math.max(0, 50 - (Date.now() - start));
+              }
+            });
+          }, 1);
+        };
+      }
+      
+      if (!window.cancelIdleCallback) {
+        window.cancelIdleCallback = function(id) {
+          clearTimeout(id);
+        };
+      }
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
