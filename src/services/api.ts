@@ -84,8 +84,11 @@ class ApiService {
 
   // Search properties with autocomplete
   async searchProperties(query: string, limit: number = 10): Promise<PropertySearchResult> {
-    const endpoint = `/properties/search?q=${encodeURIComponent(query)}&limit=${limit}`;
-    return this.fetchWithErrorHandling<PropertySearchResult>(endpoint);
+    const endpoint = `/properties/search`;
+    return this.fetchWithErrorHandling<PropertySearchResult>(endpoint, {
+      method: 'POST',
+      body: JSON.stringify({ address: query, limit })
+    });
   }
 
   // Get property details by address
@@ -103,6 +106,12 @@ class ApiService {
   ): Promise<PropertySearchResult> {
     const endpoint = `/properties/nearby?lat=${lat}&lng=${lng}&radius=${radius}&limit=${limit}`;
     return this.fetchWithErrorHandling<PropertySearchResult>(endpoint);
+  }
+
+  // Get market trends for area
+  async getMarketTrends(area: string): Promise<any> {
+    const endpoint = `/market/trends?area=${encodeURIComponent(area)}`;
+    return this.fetchWithErrorHandling<any>(endpoint);
   }
 
   // Test API connection
@@ -160,6 +169,7 @@ export const {
   searchProperties,
   getPropertyDetails,
   getNearbyProperties,
+  getMarketTrends,
   testConnection,
   getApiStatus
 } = apiService;
