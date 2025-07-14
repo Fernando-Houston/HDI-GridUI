@@ -4,7 +4,7 @@ import { SearchBar } from './components/SearchBar/SearchBar';
 import { PropertyPanel } from './components/PropertyPanel/PropertyPanel';
 import { StatusBar } from './components/StatusBar/StatusBar';
 import { LeadsFolder } from './components/LeadsFolder/LeadsFolder';
-import { mockProperties, mockSearchSuggestions } from './data/mockProperties';
+import { usePropertyManager, usePropertySearch, useApiStatus } from './hooks/usePropertyData';
 import type { Property } from './types/Property';
 
 interface Lead extends Property {
@@ -14,39 +14,56 @@ interface Lead extends Property {
 }
 
 function App() {
-  const [selectedProperty, setSelectedProperty] = useState<Property | null>(null);
   const [isPanelOpen, setIsPanelOpen] = useState(false);
   const [isLeadsFolderOpen, setIsLeadsFolderOpen] = useState(false);
   const [leads, setLeads] = useState<Lead[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [zoomLevel] = useState(1.0);
 
+  // Use API hooks
+  const {
+    properties,
+    totalProperties,
+    selectedProperty,
+    isLoadingNearby,
+    selectProperty,
+    clearSelection
+  } = usePropertyManager();
+
+  const { data: searchData } = usePropertySearch(
+    searchQuery, 
+    searchQuery.length >= 2
+  );
+
+  const apiStatus = useApiStatus();
+
   // Handle property selection from grid
   const handlePropertySelect = useCallback((property: Property) => {
-    setSelectedProperty(property);
+    selectProperty(property);
     setIsPanelOpen(true);
-  }, []);
+  }, [selectProperty]);
 
   // Handle search
   const handleSearch = useCallback((query: string) => {
     setSearchQuery(query);
-    // In real app, this would trigger API call
-    console.log('Searching for:', query);
   }, []);
 
   // Handle search suggestion selection
   const handleSuggestionSelect = useCallback((suggestion: string) => {
     setSearchQuery(suggestion);
     
-    // Find matching property and focus on it
-    const matchingProperty = mockProperties.find(prop => 
+    // Find matching property from search results or current properties
+    const searchResults = searchData?.properties || [];
+    const allProperties = [...searchResults, ...properties];
+    
+    const matchingProperty = allProperties.find(prop => 
       prop.address.toLowerCase().includes(suggestion.toLowerCase())
     );
     
     if (matchingProperty) {
       handlePropertySelect(matchingProperty);
     }
-  }, [handlePropertySelect]);
+  }, [searchData, properties, handlePropertySelect]);
 
   // Handle adding property to leads
   const handleAddToLeads = useCallback((property: Property) => {
@@ -74,16 +91,16 @@ function App() {
 
   // Handle lead click (opens property panel)
   const handleLeadClick = useCallback((lead: Lead) => {
-    setSelectedProperty(lead);
+    selectProperty(lead);
     setIsPanelOpen(true);
     setIsLeadsFolderOpen(false);
-  }, []);
+  }, [selectProperty]);
 
   // Close property panel
   const handleClosePanel = useCallback(() => {
     setIsPanelOpen(false);
-    setSelectedProperty(null);
-  }, []);
+    clearSelection();
+  }, [clearSelection]);
 
   // Toggle leads folder
   const handleToggleLeadsFolder = useCallback(() => {
@@ -96,7 +113,7 @@ function App() {
       <div className="absolute top-6 left-1/2 transform -translate-x-1/2 z-30 w-full max-w-2xl px-6">
         <SearchBar
           onSearch={handleSearch}
-          suggestions={mockSearchSuggestions}
+          suggestions={searchData?.suggestions || []}
           onSuggestionSelect={handleSuggestionSelect}
           placeholder="Search Houston properties..."
         />
@@ -104,11 +121,21 @@ function App() {
 
       {/* Main Grid Canvas */}
       <div className="absolute inset-0">
-        <PropertyGrid
-          properties={mockProperties}
-          onPropertySelect={handlePropertySelect}
-          selectedPropertyId={selectedProperty?.id}
-        />
+        {isLoadingNearby ? (
+          <div className="w-full h-full flex items-center justify-center bg-hdi-bg-primary">
+            <div className="text-center">
+              <div className="w-16 h-16 border-4 border-hdi-accent-cyan/30 border-t-hdi-accent-cyan rounded-full animate-spin mx-auto mb-4"></div>
+              <div className="text-hdi-text-primary text-lg font-medium">Loading Houston Properties...</div>
+              <div className="text-hdi-text-secondary text-sm">Connecting to Railway API</div>
+            </div>
+          </div>
+        ) : (
+          <PropertyGrid
+            properties={properties}
+            onPropertySelect={handlePropertySelect}
+            selectedPropertyId={selectedProperty?.id}
+          />
+        )}
       </div>
 
       {/* Property Details Panel */}
@@ -130,18 +157,20 @@ function App() {
 
       {/* Status Bar */}
       <StatusBar
-        propertiesCount={mockProperties.length}
+        propertiesCount={totalProperties}
         zoomLevel={zoomLevel}
-        responseTime={Math.floor(Math.random() * 50) + 5} // Mock response time
-        connectionStatus="connected"
+        responseTime={apiStatus.responseTime}
+        connectionStatus={apiStatus.connectionStatus}
       />
 
       {/* Grid overlay for debugging (remove in production) */}
       <div className="absolute top-20 left-4 z-40 bg-black/50 text-white p-2 rounded text-xs font-mono">
-        <div>Properties: {mockProperties.length}</div>
+        <div>Properties: {totalProperties}</div>
         <div>Selected: {selectedProperty?.address || 'None'}</div>
         <div>Leads: {leads.length}</div>
         <div>Search: {searchQuery || 'None'}</div>
+        <div>API: {apiStatus.connectionStatus}</div>
+        <div>Loading: {isLoadingNearby ? 'Yes' : 'No'}</div>
       </div>
     </div>
   );
