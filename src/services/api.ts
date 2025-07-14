@@ -102,7 +102,7 @@ class ApiService {
     lat: number, 
     lng: number, 
     radius: number = 1,
-    limit: number = 100
+    _limit: number = 100
   ): Promise<PropertySearchResult> {
     const endpoint = `/properties/location?lat=${lat}&lon=${lng}&radius_miles=${radius}`;
     return this.fetchWithErrorHandling<PropertySearchResult>(endpoint);
