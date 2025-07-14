@@ -102,7 +102,7 @@ export const usePropertyManager = () => {
     isLoading: isLoadingNearby,
     error: nearbyError,
     refetch: refetchNearby
-  } = useNearbyProperties(gridCenter.lat, gridCenter.lng, 5, true, 1000); // Increased radius and limit
+  } = useNearbyProperties(gridCenter.lat, gridCenter.lng, 2, true, 500); // Use new API limit of 500
 
   // Get details for selected property
   // NOTE: API doesn't have property details endpoint yet, so we'll use the data we already have

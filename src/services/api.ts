@@ -88,7 +88,7 @@ class ApiService {
     // Since the search endpoint returns analysis data, we'll use location search instead
     try {
       // First, try to get properties from nearby endpoint centered on Houston
-      const nearbyEndpoint = `/properties/location?lat=29.7604&lon=-95.3698&radius_miles=10`;
+      const nearbyEndpoint = `/properties/location?lat=29.7604&lon=-95.3698&radius_miles=10&limit=500`;
       const nearbyResponse = await this.fetchWithErrorHandling<any>(nearbyEndpoint);
       
       if (nearbyResponse && nearbyResponse.properties) {
@@ -165,6 +165,33 @@ class ApiService {
     return this.fetchWithErrorHandling<any>(endpoint);
   }
 
+  // Browse all properties with pagination
+  async getAllProperties(
+    page: number = 1,
+    perPage: number = 1000,
+    filters?: {
+      city?: string;
+      minValue?: number;
+      maxValue?: number;
+    }
+  ): Promise<{
+    properties: Property[];
+    total: number;
+    page: number;
+    per_page: number;
+    total_pages: number;
+  }> {
+    let endpoint = `/properties/all?page=${page}&per_page=${perPage}`;
+    
+    if (filters) {
+      if (filters.city) endpoint += `&city=${encodeURIComponent(filters.city)}`;
+      if (filters.minValue) endpoint += `&min_value=${filters.minValue}`;
+      if (filters.maxValue) endpoint += `&max_value=${filters.maxValue}`;
+    }
+    
+    return this.fetchWithErrorHandling(endpoint);
+  }
+
   // Test API connection
   async testConnection(): Promise<{ status: 'connected' | 'disconnected', responseTime: number }> {
     const startTime = Date.now();
@@ -221,6 +248,7 @@ export const {
   getPropertyDetails,
   getNearbyProperties,
   getMarketTrends,
+  getAllProperties,
   testConnection,
   getApiStatus
 } = apiService;
