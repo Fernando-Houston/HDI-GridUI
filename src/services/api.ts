@@ -48,8 +48,8 @@ class ApiService {
 
   // Determine if we should fallback to mock data
   private shouldFallbackToMock(endpoint: string): boolean {
-    // Always fallback in development or if API is unreachable
-    return import.meta.env.DEV || endpoint.includes('/properties');
+    // Always fallback to mock data until CORS is fixed on Railway API
+    return true;
   }
 
   // Get mock data based on endpoint
