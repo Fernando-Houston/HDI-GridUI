@@ -48,8 +48,8 @@ class ApiService {
 
   // Determine if we should fallback to mock data
   private shouldFallbackToMock(_endpoint: string): boolean {
-    // Try to use real API with correct base URL
-    return false;
+    // Use mock data until we verify the nearby properties endpoint
+    return true;
   }
 
   // Get mock data based on endpoint
