@@ -392,7 +392,7 @@ function App() {
     clearSelection
   } = usePropertyManager();
 
-  const { data: searchData } = usePropertySearch(
+  const { data: searchData, isLoading: isSearching, error: searchError } = usePropertySearch(
     searchQuery, 
     searchQuery.length >= 2
   );
@@ -524,6 +524,8 @@ function App() {
           placeholder="Search Houston properties..."
           searchResults={searchData?.properties || []}
           onPropertySelect={handleSearchResultSelect}
+          isSearching={isSearching}
+          searchError={searchError as Error | null}
         />
       </div>
 

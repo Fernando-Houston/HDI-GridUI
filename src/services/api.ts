@@ -1,4 +1,5 @@
 import type { Property, PropertySearchResult } from '../types/Property';
+import { transformProperty } from '../utils/propertyTransformer';
 
 // API Configuration
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://hdi-api-production.up.railway.app';
@@ -10,9 +11,12 @@ import { mockProperties, mockSearchSuggestions } from '../data/mockProperties';
 
 class ApiService {
   private baseUrl: string;
+  private searchCache: Map<string, { data: PropertySearchResult; timestamp: number }>;
+  private cacheTimeout: number = 5 * 60 * 1000; // 5 minutes
 
   constructor() {
     this.baseUrl = `${API_BASE_URL}/api/${API_VERSION}`;
+    this.searchCache = new Map();
   }
 
   // Generic fetch wrapper with error handling
@@ -30,10 +34,18 @@ class ApiService {
       });
 
       if (!response.ok) {
-        throw new Error(`API Error: ${response.status} - ${response.statusText}`);
+        const errorMessage = `API Error: ${response.status} - ${response.statusText}`;
+        console.error(`[API] ${endpoint} failed:`, errorMessage);
+        throw new Error(errorMessage);
       }
 
-      return await response.json();
+      const data = await response.json();
+      console.log(`[API] ${endpoint} success:`, { 
+        endpoint, 
+        dataReceived: !!data,
+        recordCount: Array.isArray(data) ? data.length : (data?.properties?.length || 1)
+      });
+      return data;
     } catch (error) {
       console.warn(`API request failed: ${endpoint}`, error);
       
@@ -82,8 +94,29 @@ class ApiService {
     return mockProperties;
   }
 
+  // Clear expired cache entries
+  private clearExpiredCache() {
+    const now = Date.now();
+    for (const [key, value] of this.searchCache.entries()) {
+      if (now - value.timestamp > this.cacheTimeout) {
+        this.searchCache.delete(key);
+      }
+    }
+  }
+
   // Search properties with autocomplete
   async searchProperties(query: string, limit: number = 10): Promise<PropertySearchResult> {
+    console.log('[API] Searching properties:', { query, limit });
+    
+    // Check cache first
+    const cacheKey = `search:${query}:${limit}`;
+    const cached = this.searchCache.get(cacheKey);
+    
+    if (cached && Date.now() - cached.timestamp < this.cacheTimeout) {
+      console.log('[API] Returning cached search results:', { query, results: cached.data.total });
+      return cached.data;
+    }
+    
     try {
       // Use the actual search endpoint
       const searchEndpoint = `/properties/search`;
@@ -92,61 +125,49 @@ class ApiService {
         body: JSON.stringify({ address: query })
       });
       
-      // The search endpoint returns a single property or analysis
-      if (searchResponse) {
-        const properties = [];
-        
-        // If we got a property with an address, add it to results
-        if (searchResponse.address || searchResponse.property_address) {
-          const prop = {
-            ...searchResponse,
-            id: searchResponse.id || searchResponse.account_number || `property-${Date.now()}`,
-            address: searchResponse.address || searchResponse.property_address || query,
-            marketValue: searchResponse.market_value || searchResponse.marketValue || searchResponse.official_data?.market_value || 0,
-            propertyType: searchResponse.property_type || searchResponse.propertyType || 'residential',
-            latitude: searchResponse.latitude || searchResponse.lat || 29.7604,
-            longitude: searchResponse.longitude || searchResponse.lon || -95.3698,
-            landValue: searchResponse.land_value || searchResponse.landValue || 0,
-            squareFeet: searchResponse.square_feet || searchResponse.squareFeet || 0,
-            yearBuilt: searchResponse.year_built || searchResponse.yearBuilt || 0,
-            owner: searchResponse.owner || searchResponse.owner_name || 'Unknown',
-            accountNumber: searchResponse.account_number || searchResponse.accountNumber || '',
-            gridPosition: {
-              x: 200 + Math.random() * 600,
-              y: 150 + Math.random() * 400,
-              size: 40 + Math.random() * 30
-            }
-          };
-          properties.push(prop);
-        }
-        
-        // Comment out browse all endpoint until it's fixed on backend
-        // The search endpoint should be sufficient for finding specific properties
+      // The search endpoint now returns {success, properties, count}
+      if (searchResponse && searchResponse.success) {
+        const properties = (searchResponse.properties || []).map((prop: any) => transformProperty(prop));
+        console.log('[API] Search response:', { 
+          success: searchResponse.success,
+          count: searchResponse.count,
+          propertiesFound: properties.length,
+          query 
+        });
 
         // Generate suggestions from all found properties
-        const suggestions = properties.map((prop: any) => prop.address).slice(0, 10);
+        const suggestions = searchResponse.suggestions || properties.map((prop: any) => prop.address).slice(0, 10);
 
-        return {
+        const result = {
           properties: properties.slice(0, limit),
           suggestions: suggestions,
-          total: properties.length
+          total: searchResponse.count || properties.length
         };
+        console.log('[API] Search result:', { found: result.total, query });
+        
+        // Cache the result
+        this.searchCache.set(cacheKey, { data: result, timestamp: Date.now() });
+        this.clearExpiredCache(); // Clean up old entries
+        
+        return result;
       }
       
-      // If no properties found, return empty results
+      // If no properties found, return empty results but don't cache
+      console.log('[API] No properties found for query:', query);
       return {
         properties: [],
         suggestions: [],
         total: 0
       };
     } catch (error) {
-      console.error('Search error:', error);
-      // If search fails, return empty results
+      console.error('[API] Search error:', error);
+      // If search fails, return empty results with error context
       return {
         properties: [],
         suggestions: [],
-        total: 0
-      };
+        total: 0,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      } as PropertySearchResult;
     }
   }
 
@@ -170,7 +191,25 @@ class ApiService {
     limit: number = 100
   ): Promise<PropertySearchResult> {
     const endpoint = `/properties/location?lat=${lat}&lon=${lng}&radius_miles=${radius}&limit=${limit}`;
-    return this.fetchWithErrorHandling<PropertySearchResult>(endpoint);
+    const response = await this.fetchWithErrorHandling<any>(endpoint);
+    
+    // Transform response to match PropertySearchResult format
+    if (response && response.properties) {
+      const properties = response.properties.map((prop: any) => transformProperty(prop));
+      console.log('[API] Location search:', { 
+        found: properties.length,
+        total: response.count,
+        location: `${lat},${lng}` 
+      });
+      
+      return {
+        properties,
+        suggestions: [],
+        total: response.count || properties.length
+      };
+    }
+    
+    return { properties: [], suggestions: [], total: 0 };
   }
 
   // Get market trends for area

@@ -9,6 +9,8 @@ interface SearchBarProps {
   placeholder?: string;
   searchResults?: Property[];
   onPropertySelect?: (property: Property) => void;
+  isSearching?: boolean;
+  searchError?: Error | null;
 }
 
 export const SearchBar: React.FC<SearchBarProps> = ({
@@ -17,27 +19,42 @@ export const SearchBar: React.FC<SearchBarProps> = ({
   onSuggestionSelect: _onSuggestionSelect,
   placeholder = "Search Houston properties...",
   searchResults = [],
-  onPropertySelect
+  onPropertySelect,
+  isSearching = false,
+  searchError = null
 }) => {
   const [query, setQuery] = useState('');
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(-1);
+  const [isDebouncing, setIsDebouncing] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const suggestionsRef = useRef<HTMLDivElement>(null);
+  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   // Show search results if available, otherwise show suggestions
   const hasResults = searchResults.length > 0;
   const showResults = hasResults && query.length >= 3;
 
-  // Handle input change
+  // Handle input change with debouncing
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setQuery(value);
     setSelectedIndex(-1);
     setShowSuggestions(value.length >= 2);
     
+    // Clear existing timer
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
+    
     if (value.length >= 3) {
-      onSearch(value);
+      setIsDebouncing(true);
+      debounceTimerRef.current = setTimeout(() => {
+        onSearch(value);
+        setIsDebouncing(false);
+      }, 300); // 300ms debounce delay
+    } else {
+      setIsDebouncing(false);
     }
   };
 
@@ -106,6 +123,15 @@ export const SearchBar: React.FC<SearchBarProps> = ({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  // Cleanup debounce timer on unmount
+  useEffect(() => {
+    return () => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+    };
+  }, []);
+
   return (
     <div className="relative w-full max-w-2xl mx-auto">
       {/* Search Input */}
@@ -131,7 +157,7 @@ export const SearchBar: React.FC<SearchBarProps> = ({
 
       {/* Search Results Dropdown */}
       <AnimatePresence>
-        {showSuggestions && showResults && (
+        {showSuggestions && (showResults || searchError) && (
           <motion.div
             ref={suggestionsRef}
             initial={{ opacity: 0, y: -10, scale: 0.95 }}
@@ -140,6 +166,14 @@ export const SearchBar: React.FC<SearchBarProps> = ({
             transition={{ duration: 0.2, ease: "easeOut" }}
             className="absolute top-full left-0 right-0 mt-2 bg-hdi-bg-secondary/95 backdrop-blur-lg border border-hdi-accent-cyan/20 rounded-2xl shadow-2xl z-50 overflow-hidden max-h-96"
           >
+            {searchError ? (
+              <div className="p-6 text-center">
+                <div className="text-red-400 text-lg mb-2">⚠️ Search Error</div>
+                <div className="text-hdi-text-secondary text-sm">
+                  Unable to search properties. Please try again.
+                </div>
+              </div>
+            ) : (
             <div className="py-2 overflow-y-auto max-h-80">
               {searchResults.slice(0, 10).map((property, index) => (
                 <motion.div
@@ -183,6 +217,7 @@ export const SearchBar: React.FC<SearchBarProps> = ({
                 </motion.div>
               ))}
             </div>
+            )}
             
             {/* Footer */}
             <div className="px-6 py-2 border-t border-hdi-accent-cyan/10 bg-hdi-bg-secondary/50">
@@ -196,7 +231,7 @@ export const SearchBar: React.FC<SearchBarProps> = ({
       </AnimatePresence>
 
       {/* Loading indicator */}
-      {query.length >= 3 && (
+      {query.length >= 3 && (isDebouncing || isSearching) && (
         <div className="absolute right-16 top-1/2 transform -translate-y-1/2">
           <div className="w-5 h-5 border-2 border-hdi-accent-cyan/30 border-t-hdi-accent-cyan rounded-full animate-spin"></div>
         </div>

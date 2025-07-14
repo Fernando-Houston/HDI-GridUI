@@ -222,11 +222,15 @@ export const PropertyPanel: React.FC<PropertyPanelProps> = ({
                     className="bg-gradient-to-br from-orange-500/10 to-red-500/10 border border-orange-400/20 rounded-xl p-4"
                   >
                     <div className="text-hdi-text-secondary text-xs font-medium mb-1">Neighborhood Trend</div>
-                    <div className={`text-lg font-bold flex items-center gap-1 ${getTrendColor(property.neighborhoodTrend.trend)}`}>
-                      <span>{getTrendIcon(property.neighborhoodTrend.trend)}</span>
-                      <span className="capitalize">{property.neighborhoodTrend.trend}</span>
-                      <span className="text-sm">+{property.neighborhoodTrend.yoyChange}%</span>
-                    </div>
+                    {property.neighborhoodTrend ? (
+                      <div className={`text-lg font-bold flex items-center gap-1 ${getTrendColor(property.neighborhoodTrend.trend)}`}>
+                        <span>{getTrendIcon(property.neighborhoodTrend.trend)}</span>
+                        <span className="capitalize">{property.neighborhoodTrend.trend}</span>
+                        <span className="text-sm">+{property.neighborhoodTrend.yoyChange}%</span>
+                      </div>
+                    ) : (
+                      <div className="text-lg text-hdi-text-secondary">N/A</div>
+                    )}
                   </motion.div>
                 </div>
               </section>

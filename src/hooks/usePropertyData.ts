@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { apiService } from '../services/api';
 import type { Property } from '../types/Property';
+import { transformProperty } from '../utils/propertyTransformer';
 
 // Hook for property search with debouncing
 export const usePropertySearch = (query: string, enabled: boolean = true) => {
@@ -118,45 +119,8 @@ export const usePropertyManager = () => {
   // Transform properties to ensure they have required fields
   const rawProperties = nearbyData?.properties || [];
   const properties = rawProperties.map((prop: any, index: number) => {
-    // If property doesn't have gridPosition, calculate one based on lat/lng
-    if (!prop.gridPosition) {
-      const baseLat = 29.7604;
-      const baseLng = -95.3698;
-      const latDiff = (prop.latitude || prop.lat || baseLat) - baseLat;
-      const lngDiff = (prop.longitude || prop.lon || baseLng) - baseLng;
-      
-      // Convert lat/lng differences to grid positions
-      const x = 500 + (lngDiff * 10000); // Center at 500, scale by 10000
-      const y = 300 + (latDiff * -10000); // Center at 300, invert Y axis
-      
-      // Determine size based on property value
-      const value = prop.market_value || prop.marketValue || 100000;
-      const size = Math.min(Math.max(40 + Math.log10(value) * 5, 40), 100);
-      
-      return {
-        ...prop,
-        id: prop.id || prop.account_number || `property-${index}`,
-        address: prop.address || prop.property_address || 'Unknown Address',
-        marketValue: prop.market_value || prop.marketValue || 0,
-        propertyType: prop.property_type || prop.propertyType || 'residential',
-        latitude: prop.latitude || prop.lat || baseLat,
-        longitude: prop.longitude || prop.lon || baseLng,
-        gridPosition: { x, y, size },
-        landValue: prop.land_value || prop.landValue || 0,
-        squareFeet: prop.square_feet || prop.squareFeet || 0,
-        yearBuilt: prop.year_built || prop.yearBuilt || 0,
-        owner: prop.owner || prop.owner_name || 'Unknown',
-        accountNumber: prop.account_number || prop.accountNumber || '',
-        estimatedValueRange: prop.estimatedValueRange || (value > 0 ? { min: value * 0.9, max: value * 1.1 } : null),
-        rentalEstimate: prop.rentalEstimate || 0,
-        investmentScore: prop.investmentScore || Math.floor(50 + Math.random() * 30),
-        neighborhoodTrend: prop.neighborhoodTrend || { 
-          trend: 'stable' as const, 
-          yoyChange: 3.5 
-        }
-      };
-    }
-    return prop;
+    // Use the transformer for consistent property structure
+    return transformProperty(prop, index);
   });
   const totalProperties = nearbyData?.total || properties.length;
 
