@@ -120,36 +120,8 @@ class ApiService {
           properties.push(prop);
         }
         
-        // Also try the browse all endpoint with the search query
-        try {
-          const browseEndpoint = `/properties/all?page=1&per_page=20&search=${encodeURIComponent(query)}`;
-          const browseResponse = await this.fetchWithErrorHandling<any>(browseEndpoint);
-          
-          if (browseResponse && browseResponse.properties) {
-            const additionalProperties = browseResponse.properties.map((prop: any, index: number) => ({
-              ...prop,
-              id: prop.id || prop.account_number || `property-${index}`,
-              address: prop.address || prop.property_address || 'Unknown Address',
-              marketValue: prop.market_value || prop.marketValue || 0,
-              propertyType: prop.property_type || prop.propertyType || 'residential',
-              latitude: prop.latitude || prop.lat || 29.7604,
-              longitude: prop.longitude || prop.lon || -95.3698,
-              landValue: prop.land_value || prop.landValue || 0,
-              squareFeet: prop.square_feet || prop.squareFeet || 0,
-              yearBuilt: prop.year_built || prop.yearBuilt || 0,
-              owner: prop.owner || prop.owner_name || 'Unknown',
-              accountNumber: prop.account_number || prop.accountNumber || '',
-              gridPosition: {
-                x: 200 + Math.random() * 600,
-                y: 150 + Math.random() * 400,
-                size: 40 + Math.random() * 30
-              }
-            }));
-            properties.push(...additionalProperties);
-          }
-        } catch (browseError) {
-          console.log('Browse endpoint not available yet');
-        }
+        // Comment out browse all endpoint until it's fixed on backend
+        // The search endpoint should be sufficient for finding specific properties
 
         // Generate suggestions from all found properties
         const suggestions = properties.map((prop: any) => prop.address).slice(0, 10);

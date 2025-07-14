@@ -178,7 +178,10 @@ export const PropertyPanel: React.FC<PropertyPanelProps> = ({
                   >
                     <div className="text-hdi-text-secondary text-xs font-medium mb-1">Estimated Value</div>
                     <div className="text-hdi-accent-cyan text-lg font-bold">
-                      {formatCurrency(property.estimatedValueRange.min)}-{formatCurrency(property.estimatedValueRange.max)}
+                      {property.estimatedValueRange 
+                        ? `${formatCurrency(property.estimatedValueRange.min)}-${formatCurrency(property.estimatedValueRange.max)}`
+                        : 'N/A'
+                      }
                     </div>
                   </motion.div>
 

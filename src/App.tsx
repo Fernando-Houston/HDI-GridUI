@@ -426,13 +426,22 @@ function App() {
     const existingLead = leads.find(lead => lead.id === property.id);
     
     if (!existingLead) {
-      // Ensure the property has a grid position
+      // Ensure the property has required fields
       const propertyWithGrid = {
         ...property,
         gridPosition: property.gridPosition || {
           x: 200 + Math.random() * 600,
           y: 150 + Math.random() * 400,
           size: 40 + Math.random() * 30
+        },
+        estimatedValueRange: property.estimatedValueRange || 
+          (property.marketValue > 0 ? { 
+            min: property.marketValue * 0.9, 
+            max: property.marketValue * 1.1 
+          } : null),
+        neighborhoodTrend: property.neighborhoodTrend || {
+          trend: 'stable' as const,
+          yoyChange: 3.5
         }
       };
       

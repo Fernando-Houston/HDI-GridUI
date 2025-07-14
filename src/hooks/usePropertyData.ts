@@ -147,7 +147,7 @@ export const usePropertyManager = () => {
         yearBuilt: prop.year_built || prop.yearBuilt || 0,
         owner: prop.owner || prop.owner_name || 'Unknown',
         accountNumber: prop.account_number || prop.accountNumber || '',
-        estimatedValueRange: prop.estimatedValueRange || { min: value * 0.9, max: value * 1.1 },
+        estimatedValueRange: prop.estimatedValueRange || (value > 0 ? { min: value * 0.9, max: value * 1.1 } : null),
         rentalEstimate: prop.rentalEstimate || 0,
         investmentScore: prop.investmentScore || Math.floor(50 + Math.random() * 30),
         neighborhoodTrend: prop.neighborhoodTrend || { 
