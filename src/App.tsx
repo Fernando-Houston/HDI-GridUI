@@ -1,9 +1,11 @@
 import { useState, useCallback } from 'react';
+import { motion } from 'framer-motion';
 import { PropertyGrid } from './components/PropertyGrid/PropertyGrid';
 import { SearchBar } from './components/SearchBar/SearchBar';
 import { PropertyPanel } from './components/PropertyPanel/PropertyPanel';
 import { StatusBar } from './components/StatusBar/StatusBar';
 import { LeadsFolder } from './components/LeadsFolder/LeadsFolder';
+import { WelcomeScreen } from './components/WelcomeScreen/WelcomeScreen';
 import { usePropertyManager, usePropertySearch, useApiStatus } from './hooks/usePropertyData';
 import type { Property } from './types/Property';
 
@@ -14,6 +16,7 @@ interface Lead extends Property {
 }
 
 function App() {
+  const [showWelcome, setShowWelcome] = useState(true);
   const [isPanelOpen, setIsPanelOpen] = useState(false);
   const [isLeadsFolderOpen, setIsLeadsFolderOpen] = useState(false);
   const [leads, setLeads] = useState<Lead[]>([]);
@@ -107,8 +110,23 @@ function App() {
     setIsLeadsFolderOpen(prev => !prev);
   }, []);
 
+  // Handle welcome screen completion
+  const handleWelcomeComplete = useCallback(() => {
+    setShowWelcome(false);
+  }, []);
+
+  // Show welcome screen first
+  if (showWelcome) {
+    return <WelcomeScreen onComplete={handleWelcomeComplete} />;
+  }
+
   return (
-    <div className="relative w-full h-screen bg-hdi-bg-primary overflow-hidden font-hdi">
+    <motion.div
+      initial={{ opacity: 0, scale: 0.95 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{ duration: 0.8, ease: "easeOut" }}
+      className="relative w-full h-screen bg-hdi-bg-primary overflow-hidden font-hdi"
+    >
       {/* Search Bar */}
       <div className="absolute top-6 left-1/2 transform -translate-x-1/2 z-30 w-full max-w-2xl px-6">
         <SearchBar
@@ -172,7 +190,7 @@ function App() {
         <div>API: {apiStatus.connectionStatus}</div>
         <div>Loading: {isLoadingNearby ? 'Yes' : 'No'}</div>
       </div>
-    </div>
+    </motion.div>
   );
 }
 
