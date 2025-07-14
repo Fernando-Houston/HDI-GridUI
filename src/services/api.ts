@@ -84,32 +84,58 @@ class ApiService {
 
   // Search properties with autocomplete
   async searchProperties(query: string, limit: number = 10): Promise<PropertySearchResult> {
-    const endpoint = `/properties/search`;
+    // Try to search using the location endpoint with a text query
+    // Since the search endpoint returns analysis data, we'll use location search instead
     try {
-      const response = await this.fetchWithErrorHandling<any>(endpoint, {
-        method: 'POST',
-        body: JSON.stringify({ address: query, limit })
-      });
+      // First, try to get properties from nearby endpoint centered on Houston
+      const nearbyEndpoint = `/properties/location?lat=29.7604&lon=-95.3698&radius_miles=10`;
+      const nearbyResponse = await this.fetchWithErrorHandling<any>(nearbyEndpoint);
       
-      // Transform the response to match expected format
-      // The API returns an analysis object, but we need properties and suggestions
-      if (response && response.address) {
-        // Generate suggestions based on the search address
-        const suggestions = [
-          response.address,
-          ...(response.recommendations || []).map((rec: any) => rec.property || rec).slice(0, 5)
-        ].filter(Boolean);
-        
-        // For now, return empty properties array since this endpoint doesn't return actual properties
-        // The user can select from suggestions which will trigger a different search
+      if (nearbyResponse && nearbyResponse.properties) {
+        // Filter properties by address matching the query
+        const filteredProperties = nearbyResponse.properties.filter((prop: any) => {
+          const address = prop.address || prop.property_address || '';
+          return address.toLowerCase().includes(query.toLowerCase());
+        }).slice(0, limit);
+
+        // Map properties to ensure they have the right structure
+        const mappedProperties = filteredProperties.map((prop: any, index: number) => ({
+          ...prop,
+          id: prop.id || prop.account_number || `property-${index}`,
+          address: prop.address || prop.property_address || 'Unknown Address',
+          marketValue: prop.market_value || prop.marketValue || 0,
+          propertyType: prop.property_type || prop.propertyType || 'residential',
+          latitude: prop.latitude || prop.lat || 29.7604,
+          longitude: prop.longitude || prop.lon || -95.3698,
+          landValue: prop.land_value || prop.landValue || 0,
+          squareFeet: prop.square_feet || prop.squareFeet || 0,
+          yearBuilt: prop.year_built || prop.yearBuilt || 0,
+          owner: prop.owner || prop.owner_name || 'Unknown',
+          accountNumber: prop.account_number || prop.accountNumber || '',
+          // Generate a random grid position for search results
+          gridPosition: {
+            x: 200 + Math.random() * 600,
+            y: 150 + Math.random() * 400,
+            size: 40 + Math.random() * 30
+          }
+        }));
+
+        // Generate suggestions from the filtered properties
+        const suggestions = mappedProperties.map((prop: any) => prop.address).slice(0, 8);
+
         return {
-          properties: [],
+          properties: mappedProperties,
           suggestions: suggestions,
-          total: 0
+          total: mappedProperties.length
         };
       }
       
-      return response;
+      // If no properties found, return empty results
+      return {
+        properties: [],
+        suggestions: [],
+        total: 0
+      };
     } catch (error) {
       // If search fails, fall back to mock data
       return this.getMockData(endpoint);

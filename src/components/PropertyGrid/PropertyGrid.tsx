@@ -5,6 +5,8 @@ interface PropertyGridProps {
   properties: Property[];
   onPropertySelect: (property: Property) => void;
   selectedPropertyId?: string;
+  showOnlyLeads?: boolean;
+  leads?: Property[];
 }
 
 interface GridViewport {
@@ -16,7 +18,9 @@ interface GridViewport {
 export const PropertyGrid: React.FC<PropertyGridProps> = ({
   properties,
   onPropertySelect,
-  selectedPropertyId
+  selectedPropertyId,
+  showOnlyLeads = true,
+  leads = []
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [viewport, setViewport] = useState<GridViewport>({
@@ -104,8 +108,9 @@ export const PropertyGrid: React.FC<PropertyGridProps> = ({
       ctx.stroke();
     }
 
-    // Draw properties
-    properties.forEach(property => {
+    // Draw properties - only show leads if showOnlyLeads is true
+    const propertiesToDraw = showOnlyLeads ? leads : properties;
+    propertiesToDraw.forEach(property => {
       const x = property.gridPosition.x * viewport.scale + viewport.offsetX;
       const y = property.gridPosition.y * viewport.scale + viewport.offsetY;
       const size = property.gridPosition.size * viewport.scale;
@@ -214,7 +219,8 @@ export const PropertyGrid: React.FC<PropertyGridProps> = ({
       }));
     } else {
       // Check for property hover
-      const hoveredProp = properties.find(property => {
+      const propertiesToCheck = showOnlyLeads ? leads : properties;
+      const hoveredProp = propertiesToCheck.find(property => {
         const x = property.gridPosition.x * viewport.scale + viewport.offsetX;
         const y = property.gridPosition.y * viewport.scale + viewport.offsetY;
         const size = property.gridPosition.size * viewport.scale;
@@ -242,7 +248,8 @@ export const PropertyGrid: React.FC<PropertyGridProps> = ({
     const mouseY = e.clientY - rect.top;
 
     // Find clicked property
-    const clickedProperty = properties.find(property => {
+    const propertiesToCheck = showOnlyLeads ? leads : properties;
+    const clickedProperty = propertiesToCheck.find(property => {
       const x = property.gridPosition.x * viewport.scale + viewport.offsetX;
       const y = property.gridPosition.y * viewport.scale + viewport.offsetY;
       const size = property.gridPosition.size * viewport.scale;
@@ -345,7 +352,8 @@ export const PropertyGrid: React.FC<PropertyGridProps> = ({
           const touchY = touch.clientY - rect.top;
           
           // Find tapped property
-          const tappedProperty = properties.find(property => {
+          const propertiesToCheck = showOnlyLeads ? leads : properties;
+          const tappedProperty = propertiesToCheck.find(property => {
             const x = property.gridPosition.x * viewport.scale + viewport.offsetX;
             const y = property.gridPosition.y * viewport.scale + viewport.offsetY;
             const size = property.gridPosition.size * viewport.scale;
@@ -435,7 +443,8 @@ export const PropertyGrid: React.FC<PropertyGridProps> = ({
       {hoveredProperty && (
         <div className="absolute top-4 left-4 bg-hdi-bg-secondary/95 backdrop-blur-sm border border-hdi-accent-cyan/30 rounded-lg p-3 text-sm pointer-events-none">
           {(() => {
-            const prop = properties.find(p => p.id === hoveredProperty);
+            const propertiesToCheck = showOnlyLeads ? leads : properties;
+            const prop = propertiesToCheck.find(p => p.id === hoveredProperty);
             return prop ? (
               <div>
                 <div className="font-semibold text-hdi-text-primary">{prop.address}</div>

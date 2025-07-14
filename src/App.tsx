@@ -6,6 +6,7 @@ import { PropertyPanel } from './components/PropertyPanel/PropertyPanel';
 import { StatusBar } from './components/StatusBar/StatusBar';
 import { LeadsFolder } from './components/LeadsFolder/LeadsFolder';
 import { WelcomeScreen } from './components/WelcomeScreen/WelcomeScreen';
+import { SearchResults } from './components/SearchResults/SearchResults';
 import { usePropertyManager, usePropertySearch, useApiStatus } from './hooks/usePropertyData';
 import type { Property } from './types/Property';
 
@@ -381,6 +382,7 @@ function App() {
   ]);
   const [searchQuery, setSearchQuery] = useState('');
   const [zoomLevel] = useState(1.0);
+  const [showSearchResults, setShowSearchResults] = useState(false);
 
   // Use API hooks
   const {
@@ -408,32 +410,43 @@ function App() {
   // Handle search
   const handleSearch = useCallback((query: string) => {
     setSearchQuery(query);
+    if (query.length >= 3) {
+      setShowSearchResults(true);
+    } else {
+      setShowSearchResults(false);
+    }
   }, []);
 
   // Handle search suggestion selection
   const handleSuggestionSelect = useCallback((suggestion: string) => {
     setSearchQuery(suggestion);
-    
-    // Find matching property from search results or current properties
-    const searchResults = searchData?.properties || [];
-    const allProperties = [...searchResults, ...properties];
-    
-    const matchingProperty = allProperties.find(prop => 
-      prop.address.toLowerCase().includes(suggestion.toLowerCase())
-    );
-    
-    if (matchingProperty) {
-      handlePropertySelect(matchingProperty);
-    }
-  }, [searchData, properties, handlePropertySelect]);
+    setShowSearchResults(false);
+  }, []);
+
+  // Handle search result property selection
+  const handleSearchResultSelect = useCallback((property: Property) => {
+    handlePropertySelect(property);
+    setShowSearchResults(false);
+    setSearchQuery('');
+  }, [handlePropertySelect]);
 
   // Handle adding property to leads
   const handleAddToLeads = useCallback((property: Property) => {
     const existingLead = leads.find(lead => lead.id === property.id);
     
     if (!existingLead) {
-      const newLead: Lead = {
+      // Ensure the property has a grid position
+      const propertyWithGrid = {
         ...property,
+        gridPosition: property.gridPosition || {
+          x: 200 + Math.random() * 600,
+          y: 150 + Math.random() * 400,
+          size: 40 + Math.random() * 30
+        }
+      };
+      
+      const newLead: Lead = {
+        ...propertyWithGrid,
         addedDate: new Date(),
         status: 'interested',
         notes: ''
@@ -496,6 +509,15 @@ function App() {
         />
       </div>
 
+      {/* Search Results */}
+      <SearchResults
+        results={searchData?.properties || []}
+        isOpen={showSearchResults && searchQuery.length >= 3}
+        onSelectProperty={handleSearchResultSelect}
+        onClose={() => setShowSearchResults(false)}
+        searchQuery={searchQuery}
+      />
+
       {/* Main Grid Canvas */}
       <div className="absolute inset-0">
         {isLoadingNearby ? (
@@ -511,6 +533,8 @@ function App() {
             properties={properties}
             onPropertySelect={handlePropertySelect}
             selectedPropertyId={selectedProperty?.id}
+            showOnlyLeads={true}
+            leads={leads}
           />
         )}
       </div>
