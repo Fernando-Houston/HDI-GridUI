@@ -84,49 +84,80 @@ class ApiService {
 
   // Search properties with autocomplete
   async searchProperties(query: string, limit: number = 10): Promise<PropertySearchResult> {
-    // Try to search using the location endpoint with a text query
-    // Since the search endpoint returns analysis data, we'll use location search instead
     try {
-      // First, try to get properties from nearby endpoint centered on Houston
-      const nearbyEndpoint = `/properties/location?lat=29.7604&lon=-95.3698&radius_miles=10&limit=500`;
-      const nearbyResponse = await this.fetchWithErrorHandling<any>(nearbyEndpoint);
+      // Use the actual search endpoint
+      const searchEndpoint = `/properties/search`;
+      const searchResponse = await this.fetchWithErrorHandling<any>(searchEndpoint, {
+        method: 'POST',
+        body: JSON.stringify({ address: query })
+      });
       
-      if (nearbyResponse && nearbyResponse.properties) {
-        // Filter properties by address matching the query
-        const filteredProperties = nearbyResponse.properties.filter((prop: any) => {
-          const address = prop.address || prop.property_address || '';
-          return address.toLowerCase().includes(query.toLowerCase());
-        }).slice(0, limit);
-
-        // Map properties to ensure they have the right structure
-        const mappedProperties = filteredProperties.map((prop: any, index: number) => ({
-          ...prop,
-          id: prop.id || prop.account_number || `property-${index}`,
-          address: prop.address || prop.property_address || 'Unknown Address',
-          marketValue: prop.market_value || prop.marketValue || 0,
-          propertyType: prop.property_type || prop.propertyType || 'residential',
-          latitude: prop.latitude || prop.lat || 29.7604,
-          longitude: prop.longitude || prop.lon || -95.3698,
-          landValue: prop.land_value || prop.landValue || 0,
-          squareFeet: prop.square_feet || prop.squareFeet || 0,
-          yearBuilt: prop.year_built || prop.yearBuilt || 0,
-          owner: prop.owner || prop.owner_name || 'Unknown',
-          accountNumber: prop.account_number || prop.accountNumber || '',
-          // Generate a random grid position for search results
-          gridPosition: {
-            x: 200 + Math.random() * 600,
-            y: 150 + Math.random() * 400,
-            size: 40 + Math.random() * 30
+      // The search endpoint returns a single property or analysis
+      if (searchResponse) {
+        const properties = [];
+        
+        // If we got a property with an address, add it to results
+        if (searchResponse.address || searchResponse.property_address) {
+          const prop = {
+            ...searchResponse,
+            id: searchResponse.id || searchResponse.account_number || `property-${Date.now()}`,
+            address: searchResponse.address || searchResponse.property_address || query,
+            marketValue: searchResponse.market_value || searchResponse.marketValue || searchResponse.official_data?.market_value || 0,
+            propertyType: searchResponse.property_type || searchResponse.propertyType || 'residential',
+            latitude: searchResponse.latitude || searchResponse.lat || 29.7604,
+            longitude: searchResponse.longitude || searchResponse.lon || -95.3698,
+            landValue: searchResponse.land_value || searchResponse.landValue || 0,
+            squareFeet: searchResponse.square_feet || searchResponse.squareFeet || 0,
+            yearBuilt: searchResponse.year_built || searchResponse.yearBuilt || 0,
+            owner: searchResponse.owner || searchResponse.owner_name || 'Unknown',
+            accountNumber: searchResponse.account_number || searchResponse.accountNumber || '',
+            gridPosition: {
+              x: 200 + Math.random() * 600,
+              y: 150 + Math.random() * 400,
+              size: 40 + Math.random() * 30
+            }
+          };
+          properties.push(prop);
+        }
+        
+        // Also try the browse all endpoint with the search query
+        try {
+          const browseEndpoint = `/properties/all?page=1&per_page=20&search=${encodeURIComponent(query)}`;
+          const browseResponse = await this.fetchWithErrorHandling<any>(browseEndpoint);
+          
+          if (browseResponse && browseResponse.properties) {
+            const additionalProperties = browseResponse.properties.map((prop: any, index: number) => ({
+              ...prop,
+              id: prop.id || prop.account_number || `property-${index}`,
+              address: prop.address || prop.property_address || 'Unknown Address',
+              marketValue: prop.market_value || prop.marketValue || 0,
+              propertyType: prop.property_type || prop.propertyType || 'residential',
+              latitude: prop.latitude || prop.lat || 29.7604,
+              longitude: prop.longitude || prop.lon || -95.3698,
+              landValue: prop.land_value || prop.landValue || 0,
+              squareFeet: prop.square_feet || prop.squareFeet || 0,
+              yearBuilt: prop.year_built || prop.yearBuilt || 0,
+              owner: prop.owner || prop.owner_name || 'Unknown',
+              accountNumber: prop.account_number || prop.accountNumber || '',
+              gridPosition: {
+                x: 200 + Math.random() * 600,
+                y: 150 + Math.random() * 400,
+                size: 40 + Math.random() * 30
+              }
+            }));
+            properties.push(...additionalProperties);
           }
-        }));
+        } catch (browseError) {
+          console.log('Browse endpoint not available yet');
+        }
 
-        // Generate suggestions from the filtered properties
-        const suggestions = mappedProperties.map((prop: any) => prop.address).slice(0, 8);
+        // Generate suggestions from all found properties
+        const suggestions = properties.map((prop: any) => prop.address).slice(0, 10);
 
         return {
-          properties: mappedProperties,
+          properties: properties.slice(0, limit),
           suggestions: suggestions,
-          total: mappedProperties.length
+          total: properties.length
         };
       }
       
@@ -137,14 +168,25 @@ class ApiService {
         total: 0
       };
     } catch (error) {
-      // If search fails, fall back to mock data
-      return this.getMockData('/search');
+      console.error('Search error:', error);
+      // If search fails, return empty results
+      return {
+        properties: [],
+        suggestions: [],
+        total: 0
+      };
     }
   }
 
   // Get property details by address
   async getPropertyDetails(address: string): Promise<Property> {
     const endpoint = `/properties/${encodeURIComponent(address)}`;
+    return this.fetchWithErrorHandling<Property>(endpoint);
+  }
+
+  // Get property by account number
+  async getPropertyByAccount(accountNumber: string): Promise<Property> {
+    const endpoint = `/properties/account/${accountNumber}`;
     return this.fetchWithErrorHandling<Property>(endpoint);
   }
 
@@ -246,6 +288,7 @@ export const apiService = new ApiService();
 export const {
   searchProperties,
   getPropertyDetails,
+  getPropertyByAccount,
   getNearbyProperties,
   getMarketTrends,
   getAllProperties,
