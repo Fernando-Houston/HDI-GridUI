@@ -128,7 +128,7 @@ function App() {
       className="relative w-full h-screen bg-hdi-bg-primary overflow-hidden font-hdi"
     >
       {/* Search Bar */}
-      <div className="absolute top-6 left-1/2 transform -translate-x-1/2 z-30 w-full max-w-2xl px-6">
+      <div className="absolute top-4 sm:top-6 left-1/2 transform -translate-x-1/2 z-30 w-full max-w-2xl px-4 sm:px-6">
         <SearchBar
           onSearch={handleSearch}
           suggestions={searchData?.suggestions || []}
@@ -182,11 +182,11 @@ function App() {
       />
 
       {/* Grid overlay for debugging (remove in production) */}
-      <div className="absolute top-20 left-4 z-40 bg-black/50 text-white p-2 rounded text-xs font-mono">
+      <div className="absolute top-16 sm:top-20 left-2 sm:left-4 z-40 bg-black/50 text-white p-1 sm:p-2 rounded text-xs font-mono max-w-48 sm:max-w-none">
         <div>Properties: {totalProperties}</div>
-        <div>Selected: {selectedProperty?.address || 'None'}</div>
+        <div className="truncate">Selected: {selectedProperty?.address?.split(',')[0] || 'None'}</div>
         <div>Leads: {leads.length}</div>
-        <div>Search: {searchQuery || 'None'}</div>
+        <div className="truncate">Search: {searchQuery || 'None'}</div>
         <div>API: {apiStatus.connectionStatus}</div>
         <div>Loading: {isLoadingNearby ? 'Yes' : 'No'}</div>
       </div>

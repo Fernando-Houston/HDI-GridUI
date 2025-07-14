@@ -27,6 +27,8 @@ export const PropertyGrid: React.FC<PropertyGridProps> = ({
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [hoveredProperty, setHoveredProperty] = useState<string | null>(null);
+  const [lastTouchDistance, setLastTouchDistance] = useState(0);
+  const [isMobile, setIsMobile] = useState(false);
 
   // Canvas setup and resize handling
   const resizeCanvas = useCallback(() => {
@@ -46,9 +48,20 @@ export const PropertyGrid: React.FC<PropertyGridProps> = ({
   }, [viewport, properties, hoveredProperty, selectedPropertyId]);
 
   useEffect(() => {
+    // Detect mobile device
+    const checkMobile = () => {
+      setIsMobile('ontouchstart' in window || navigator.maxTouchPoints > 0);
+    };
+    
+    checkMobile();
     resizeCanvas();
     window.addEventListener('resize', resizeCanvas);
-    return () => window.removeEventListener('resize', resizeCanvas);
+    window.addEventListener('orientationchange', resizeCanvas);
+    
+    return () => {
+      window.removeEventListener('resize', resizeCanvas);
+      window.removeEventListener('orientationchange', resizeCanvas);
+    };
   }, [resizeCanvas]);
 
   // Draw grid and properties
@@ -243,6 +256,118 @@ export const PropertyGrid: React.FC<PropertyGridProps> = ({
     }
   };
 
+  // Touch event handlers for mobile
+  const getTouchDistance = (touch1: React.Touch, touch2: React.Touch) => {
+    return Math.sqrt(
+      Math.pow(touch2.clientX - touch1.clientX, 2) + 
+      Math.pow(touch2.clientY - touch1.clientY, 2)
+    );
+  };
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    e.preventDefault();
+    
+    if (e.touches.length === 1) {
+      // Single touch - start dragging
+      const touch = e.touches[0];
+      setIsDragging(true);
+      setDragStart({
+        x: touch.clientX - viewport.offsetX,
+        y: touch.clientY - viewport.offsetY
+      });
+    } else if (e.touches.length === 2) {
+      // Two fingers - prepare for pinch zoom
+      const distance = getTouchDistance(e.touches[0], e.touches[1]);
+      setLastTouchDistance(distance);
+      setIsDragging(false);
+    }
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    e.preventDefault();
+    
+    if (e.touches.length === 1 && isDragging) {
+      // Single touch - pan
+      const touch = e.touches[0];
+      setViewport(prev => ({
+        ...prev,
+        offsetX: touch.clientX - dragStart.x,
+        offsetY: touch.clientY - dragStart.y
+      }));
+    } else if (e.touches.length === 2) {
+      // Two fingers - pinch zoom
+      const distance = getTouchDistance(e.touches[0], e.touches[1]);
+      
+      if (lastTouchDistance > 0) {
+        const scaleFactor = distance / lastTouchDistance;
+        const newScale = Math.max(0.3, Math.min(3, viewport.scale * scaleFactor));
+        
+        // Get center point between fingers
+        const centerX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+        const centerY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+        
+        // Adjust viewport to zoom towards finger center
+        const canvas = canvasRef.current;
+        if (canvas) {
+          const rect = canvas.getBoundingClientRect();
+          const canvasCenterX = rect.width / 2;
+          const canvasCenterY = rect.height / 2;
+          
+          const offsetAdjustX = (centerX - canvasCenterX) * (scaleFactor - 1) * 0.1;
+          const offsetAdjustY = (centerY - canvasCenterY) * (scaleFactor - 1) * 0.1;
+          
+          setViewport(prev => ({
+            ...prev,
+            scale: newScale,
+            offsetX: prev.offsetX - offsetAdjustX,
+            offsetY: prev.offsetY - offsetAdjustY
+          }));
+        }
+      }
+      
+      setLastTouchDistance(distance);
+    }
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    e.preventDefault();
+    
+    if (e.touches.length === 0) {
+      // All fingers lifted
+      if (isDragging && e.changedTouches.length === 1) {
+        // Check if this was a tap (minimal movement)
+        const touch = e.changedTouches[0];
+        const canvas = canvasRef.current;
+        
+        if (canvas) {
+          const rect = canvas.getBoundingClientRect();
+          const touchX = touch.clientX - rect.left;
+          const touchY = touch.clientY - rect.top;
+          
+          // Find tapped property
+          const tappedProperty = properties.find(property => {
+            const x = property.gridPosition.x * viewport.scale + viewport.offsetX;
+            const y = property.gridPosition.y * viewport.scale + viewport.offsetY;
+            const size = property.gridPosition.size * viewport.scale;
+            
+            return touchX >= x - size/2 && touchX <= x + size/2 &&
+                   touchY >= y - size/2 && touchY <= y + size/2;
+          });
+          
+          if (tappedProperty) {
+            onPropertySelect(tappedProperty);
+          }
+        }
+      }
+      
+      setIsDragging(false);
+      setLastTouchDistance(0);
+    } else if (e.touches.length === 1) {
+      // One finger remaining - restart single touch
+      setLastTouchDistance(0);
+    }
+  };
+
   // Zoom controls
   const zoomIn = () => {
     setViewport(prev => ({ ...prev, scale: Math.min(prev.scale * 1.2, 3) }));
@@ -263,16 +388,22 @@ export const PropertyGrid: React.FC<PropertyGridProps> = ({
       <canvas
         ref={canvasRef}
         className={`w-full h-full ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
-        onMouseDown={handleMouseDown}
-        onMouseMove={handleMouseMove}
-        onMouseUp={handleMouseUp}
-        onMouseLeave={handleMouseUp}
-        onClick={handleClick}
-        style={{ display: 'block' }}
+        onMouseDown={!isMobile ? handleMouseDown : undefined}
+        onMouseMove={!isMobile ? handleMouseMove : undefined}
+        onMouseUp={!isMobile ? handleMouseUp : undefined}
+        onMouseLeave={!isMobile ? handleMouseUp : undefined}
+        onClick={!isMobile ? handleClick : undefined}
+        onTouchStart={isMobile ? handleTouchStart : undefined}
+        onTouchMove={isMobile ? handleTouchMove : undefined}
+        onTouchEnd={isMobile ? handleTouchEnd : undefined}
+        style={{ 
+          display: 'block',
+          touchAction: 'none' // Prevent default touch behaviors
+        }}
       />
       
-      {/* Zoom controls overlay */}
-      <div className="absolute top-4 right-4 flex flex-col gap-2">
+      {/* Zoom controls overlay - hide on mobile since pinch-to-zoom works */}
+      <div className={`absolute top-4 right-4 flex flex-col gap-2 ${isMobile ? 'hidden' : 'flex'}`}>
         <button
           onClick={zoomIn}
           className="w-10 h-10 bg-hdi-bg-secondary/90 border border-hdi-accent-cyan/30 rounded-lg text-hdi-accent-cyan hover:bg-hdi-accent-cyan/20 transition-all duration-200 flex items-center justify-center backdrop-blur-sm"
@@ -292,6 +423,13 @@ export const PropertyGrid: React.FC<PropertyGridProps> = ({
           🏠
         </button>
       </div>
+
+      {/* Mobile instructions */}
+      {isMobile && (
+        <div className="absolute bottom-20 left-1/2 transform -translate-x-1/2 bg-hdi-bg-secondary/90 backdrop-blur-sm border border-hdi-accent-cyan/20 rounded-full px-4 py-2 text-hdi-text-secondary text-sm z-10 pointer-events-none">
+          👆 Tap properties • 🤏 Pinch to zoom • ✋ Drag to pan
+        </div>
+      )}
       
       {/* Property hover tooltip */}
       {hoveredProperty && (

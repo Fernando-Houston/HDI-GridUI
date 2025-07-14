@@ -51,7 +51,7 @@ export const LeadsFolder: React.FC<LeadsFolderProps> = ({
       {/* Toggle Button */}
       <button
         onClick={onToggle}
-        className="fixed right-6 top-1/2 transform -translate-y-1/2 translate-y-32 w-12 h-12 bg-hdi-bg-secondary/90 border border-hdi-accent-cyan/30 rounded-xl text-hdi-accent-cyan hover:bg-hdi-accent-cyan/20 transition-all duration-200 flex items-center justify-center backdrop-blur-sm z-40"
+        className="fixed right-4 sm:right-6 top-1/2 transform -translate-y-1/2 translate-y-32 w-10 h-10 sm:w-12 sm:h-12 bg-hdi-bg-secondary/90 border border-hdi-accent-cyan/30 rounded-xl text-hdi-accent-cyan hover:bg-hdi-accent-cyan/20 transition-all duration-200 flex items-center justify-center backdrop-blur-sm z-40 text-sm sm:text-base"
       >
         📁
       </button>
@@ -75,7 +75,7 @@ export const LeadsFolder: React.FC<LeadsFolderProps> = ({
               animate={{ x: 0 }}
               exit={{ x: '100%' }}
               transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-              className="fixed right-20 top-24 bottom-24 w-80 bg-hdi-bg-secondary/95 backdrop-blur-xl border border-hdi-accent-cyan/20 rounded-2xl shadow-2xl z-50 overflow-hidden"
+              className="fixed right-4 sm:right-20 top-4 sm:top-24 bottom-4 sm:bottom-24 w-full sm:w-80 max-w-sm bg-hdi-bg-secondary/95 backdrop-blur-xl border border-hdi-accent-cyan/20 rounded-2xl shadow-2xl z-50 overflow-hidden"
             >
               {/* Header */}
               <div className="bg-gradient-to-r from-hdi-accent-cyan/20 to-hdi-accent-teal/20 border-b border-hdi-accent-cyan/20 p-4">

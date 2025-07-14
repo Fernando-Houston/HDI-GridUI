@@ -66,7 +66,7 @@ export const PropertyPanel: React.FC<PropertyPanelProps> = ({
             animate={{ x: 0 }}
             exit={{ x: '100%' }}
             transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-            className="fixed right-0 top-0 h-full w-96 bg-hdi-bg-secondary/95 backdrop-blur-xl border-l border-hdi-accent-cyan/20 shadow-2xl z-50 overflow-y-auto"
+            className="fixed right-0 top-0 h-full w-full sm:w-96 bg-hdi-bg-secondary/95 backdrop-blur-xl border-l border-hdi-accent-cyan/20 shadow-2xl z-50 overflow-y-auto"
           >
             {/* Header */}
             <div className="sticky top-0 bg-hdi-bg-secondary/90 backdrop-blur-sm border-b border-hdi-accent-cyan/10 p-6">

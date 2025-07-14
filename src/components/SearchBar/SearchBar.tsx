@@ -109,13 +109,13 @@ export const SearchBar: React.FC<SearchBarProps> = ({
           onKeyDown={handleKeyDown}
           onFocus={() => query.length >= 2 && setShowSuggestions(true)}
           placeholder={placeholder}
-          className="w-full px-6 py-4 pr-14 bg-hdi-bg-secondary/90 border border-hdi-accent-cyan/30 rounded-full text-hdi-text-primary placeholder-hdi-text-secondary text-lg font-medium backdrop-blur-sm focus:outline-none focus:border-hdi-accent-cyan focus:shadow-lg focus:shadow-hdi-accent-cyan/20 transition-all duration-300"
+          className="w-full px-4 sm:px-6 py-3 sm:py-4 pr-12 sm:pr-14 bg-hdi-bg-secondary/90 border border-hdi-accent-cyan/30 rounded-full text-hdi-text-primary placeholder-hdi-text-secondary text-base sm:text-lg font-medium backdrop-blur-sm focus:outline-none focus:border-hdi-accent-cyan focus:shadow-lg focus:shadow-hdi-accent-cyan/20 transition-all duration-300"
         />
         
         {/* Search Icon */}
-        <div className="absolute right-5 top-1/2 transform -translate-y-1/2">
-          <div className="w-8 h-8 bg-gradient-to-r from-hdi-accent-cyan to-blue-500 rounded-full flex items-center justify-center cursor-pointer hover:scale-110 transition-transform duration-200">
-            <span className="text-white text-lg">⚡</span>
+        <div className="absolute right-3 sm:right-5 top-1/2 transform -translate-y-1/2">
+          <div className="w-6 h-6 sm:w-8 sm:h-8 bg-gradient-to-r from-hdi-accent-cyan to-blue-500 rounded-full flex items-center justify-center cursor-pointer hover:scale-110 transition-transform duration-200">
+            <span className="text-white text-sm sm:text-lg">⚡</span>
           </div>
         </div>
       </div>
