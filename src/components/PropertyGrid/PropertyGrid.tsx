@@ -7,6 +7,7 @@ interface PropertyGridProps {
   selectedPropertyId?: string;
   showOnlyLeads?: boolean;
   leads?: Property[];
+  onLeadPositionUpdate?: (leadId: string, newPosition: { x: number; y: number }) => void;
 }
 
 interface GridViewport {
@@ -20,7 +21,8 @@ export const PropertyGrid: React.FC<PropertyGridProps> = ({
   onPropertySelect,
   selectedPropertyId,
   showOnlyLeads = true,
-  leads = []
+  leads = [],
+  onLeadPositionUpdate
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [viewport, setViewport] = useState<GridViewport>({
@@ -33,6 +35,8 @@ export const PropertyGrid: React.FC<PropertyGridProps> = ({
   const [hoveredProperty, setHoveredProperty] = useState<string | null>(null);
   const [lastTouchDistance, setLastTouchDistance] = useState(0);
   const [isMobile, setIsMobile] = useState(false);
+  const [isDraggingProperty, setIsDraggingProperty] = useState<string | null>(null);
+  const [propertyDragOffset, setPropertyDragOffset] = useState({ x: 0, y: 0 });
 
   // Canvas setup and resize handling
   const resizeCanvas = useCallback(() => {
@@ -196,11 +200,39 @@ export const PropertyGrid: React.FC<PropertyGridProps> = ({
 
   // Mouse event handlers
   const handleMouseDown = (e: React.MouseEvent) => {
-    setIsDragging(true);
-    setDragStart({
-      x: e.clientX - viewport.offsetX,
-      y: e.clientY - viewport.offsetY
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const rect = canvas.getBoundingClientRect();
+    const mouseX = e.clientX - rect.left;
+    const mouseY = e.clientY - rect.top;
+
+    // Check if clicking on a property
+    const propertiesToCheck = showOnlyLeads ? leads : properties;
+    const clickedProperty = propertiesToCheck.find(property => {
+      const x = property.gridPosition.x * viewport.scale + viewport.offsetX;
+      const y = property.gridPosition.y * viewport.scale + viewport.offsetY;
+      const size = property.gridPosition.size * viewport.scale;
+      
+      return mouseX >= x - size/2 && mouseX <= x + size/2 &&
+             mouseY >= y - size/2 && mouseY <= y + size/2;
     });
+
+    if (clickedProperty && e.shiftKey) {
+      // Start dragging the property if shift is held
+      setIsDraggingProperty(clickedProperty.id);
+      setPropertyDragOffset({
+        x: mouseX - (clickedProperty.gridPosition.x * viewport.scale + viewport.offsetX),
+        y: mouseY - (clickedProperty.gridPosition.y * viewport.scale + viewport.offsetY)
+      });
+    } else {
+      // Start panning the canvas
+      setIsDragging(true);
+      setDragStart({
+        x: e.clientX - viewport.offsetX,
+        y: e.clientY - viewport.offsetY
+      });
+    }
   };
 
   const handleMouseMove = (e: React.MouseEvent) => {
@@ -211,7 +243,13 @@ export const PropertyGrid: React.FC<PropertyGridProps> = ({
     const mouseX = e.clientX - rect.left;
     const mouseY = e.clientY - rect.top;
 
-    if (isDragging) {
+    if (isDraggingProperty && onLeadPositionUpdate) {
+      // Update the property position
+      const newX = (mouseX - propertyDragOffset.x - viewport.offsetX) / viewport.scale;
+      const newY = (mouseY - propertyDragOffset.y - viewport.offsetY) / viewport.scale;
+      
+      onLeadPositionUpdate(isDraggingProperty, { x: newX, y: newY });
+    } else if (isDragging) {
       setViewport(prev => ({
         ...prev,
         offsetX: e.clientX - dragStart.x,
@@ -230,15 +268,25 @@ export const PropertyGrid: React.FC<PropertyGridProps> = ({
       });
 
       setHoveredProperty(hoveredProp?.id || null);
+      
+      // Change cursor when hovering over property with shift key
+      if (hoveredProp && e.shiftKey) {
+        canvas.style.cursor = 'move';
+      } else if (hoveredProp) {
+        canvas.style.cursor = 'pointer';
+      } else {
+        canvas.style.cursor = isDragging ? 'grabbing' : 'grab';
+      }
     }
   };
 
   const handleMouseUp = () => {
     setIsDragging(false);
+    setIsDraggingProperty(null);
   };
 
   const handleClick = (e: React.MouseEvent) => {
-    if (isDragging) return;
+    if (isDragging || isDraggingProperty) return;
 
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -450,6 +498,9 @@ export const PropertyGrid: React.FC<PropertyGridProps> = ({
                 <div className="font-semibold text-hdi-text-primary">{prop.address}</div>
                 <div className="text-hdi-text-secondary">${prop.marketValue.toLocaleString()}</div>
                 <div className="text-hdi-accent-teal capitalize">{prop.propertyType}</div>
+                <div className="text-xs text-hdi-text-secondary mt-2 opacity-75">
+                  Hold Shift + Drag to move
+                </div>
               </div>
             ) : null;
           })()}

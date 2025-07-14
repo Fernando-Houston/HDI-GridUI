@@ -1,18 +1,23 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import type { Property } from '../../types/Property';
 
 interface SearchBarProps {
   onSearch: (query: string) => void;
   suggestions: string[];
   onSuggestionSelect: (suggestion: string) => void;
   placeholder?: string;
+  searchResults?: Property[];
+  onPropertySelect?: (property: Property) => void;
 }
 
 export const SearchBar: React.FC<SearchBarProps> = ({
   onSearch,
   suggestions,
   onSuggestionSelect,
-  placeholder = "Search Houston properties..."
+  placeholder = "Search Houston properties...",
+  searchResults = [],
+  onPropertySelect
 }) => {
   const [query, setQuery] = useState('');
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -20,10 +25,9 @@ export const SearchBar: React.FC<SearchBarProps> = ({
   const inputRef = useRef<HTMLInputElement>(null);
   const suggestionsRef = useRef<HTMLDivElement>(null);
 
-  // Filter suggestions based on query
-  const filteredSuggestions = suggestions.filter(suggestion =>
-    suggestion.toLowerCase().includes(query.toLowerCase())
-  ).slice(0, 8);
+  // Show search results if available, otherwise show suggestions
+  const hasResults = searchResults.length > 0;
+  const showResults = hasResults && query.length >= 3;
 
   // Handle input change
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -39,25 +43,26 @@ export const SearchBar: React.FC<SearchBarProps> = ({
 
   // Handle keyboard navigation
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (!showSuggestions || filteredSuggestions.length === 0) return;
+    const totalItems = showResults ? searchResults.length : 0;
+    if (!showSuggestions || totalItems === 0) return;
 
     switch (e.key) {
       case 'ArrowDown':
         e.preventDefault();
         setSelectedIndex(prev => 
-          prev < filteredSuggestions.length - 1 ? prev + 1 : 0
+          prev < totalItems - 1 ? prev + 1 : 0
         );
         break;
       case 'ArrowUp':
         e.preventDefault();
         setSelectedIndex(prev => 
-          prev > 0 ? prev - 1 : filteredSuggestions.length - 1
+          prev > 0 ? prev - 1 : totalItems - 1
         );
         break;
       case 'Enter':
         e.preventDefault();
-        if (selectedIndex >= 0) {
-          handleSuggestionClick(filteredSuggestions[selectedIndex]);
+        if (selectedIndex >= 0 && showResults) {
+          handlePropertyClick(searchResults[selectedIndex]);
         } else if (query.trim()) {
           onSearch(query);
           setShowSuggestions(false);
@@ -77,6 +82,16 @@ export const SearchBar: React.FC<SearchBarProps> = ({
     setShowSuggestions(false);
     setSelectedIndex(-1);
     onSuggestionSelect(suggestion);
+  };
+
+  // Handle property click
+  const handlePropertyClick = (property: Property) => {
+    setQuery('');
+    setShowSuggestions(false);
+    setSelectedIndex(-1);
+    if (onPropertySelect) {
+      onPropertySelect(property);
+    }
   };
 
   // Close suggestions when clicking outside
@@ -120,34 +135,56 @@ export const SearchBar: React.FC<SearchBarProps> = ({
         </div>
       </div>
 
-      {/* Suggestions Dropdown */}
+      {/* Search Results Dropdown */}
       <AnimatePresence>
-        {showSuggestions && filteredSuggestions.length > 0 && (
+        {showSuggestions && showResults && (
           <motion.div
             ref={suggestionsRef}
             initial={{ opacity: 0, y: -10, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -10, scale: 0.95 }}
             transition={{ duration: 0.2, ease: "easeOut" }}
-            className="absolute top-full left-0 right-0 mt-2 bg-hdi-bg-secondary/95 backdrop-blur-lg border border-hdi-accent-cyan/20 rounded-2xl shadow-2xl z-50 overflow-hidden"
+            className="absolute top-full left-0 right-0 mt-2 bg-hdi-bg-secondary/95 backdrop-blur-lg border border-hdi-accent-cyan/20 rounded-2xl shadow-2xl z-50 overflow-hidden max-h-96"
           >
-            <div className="py-2">
-              {filteredSuggestions.map((suggestion, index) => (
+            <div className="py-2 overflow-y-auto max-h-80">
+              {searchResults.slice(0, 10).map((property, index) => (
                 <motion.div
-                  key={suggestion}
+                  key={property.id || index}
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: index * 0.05 }}
-                  onClick={() => handleSuggestionClick(suggestion)}
-                  className={`px-6 py-3 cursor-pointer transition-all duration-200 ${
+                  onClick={() => handlePropertyClick(property)}
+                  className={`px-6 py-4 cursor-pointer transition-all duration-200 border-b border-hdi-accent-cyan/10 last:border-b-0 ${
                     index === selectedIndex
-                      ? 'bg-hdi-accent-cyan/20 text-hdi-accent-cyan'
-                      : 'text-hdi-text-primary hover:bg-hdi-accent-cyan/10'
+                      ? 'bg-hdi-accent-cyan/20'
+                      : 'hover:bg-hdi-accent-cyan/10'
                   }`}
                 >
-                  <div className="flex items-center gap-3">
-                    <div className="w-2 h-2 bg-hdi-accent-teal rounded-full flex-shrink-0"></div>
-                    <span className="font-medium">{suggestion}</span>
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <div className="font-semibold text-hdi-text-primary">
+                        {property.address}
+                      </div>
+                      <div className="flex items-center gap-3 mt-1 text-sm text-hdi-text-secondary">
+                        <span className="text-hdi-accent-teal font-medium">
+                          ${(property.marketValue || 0).toLocaleString()}
+                        </span>
+                        <span className="capitalize">
+                          {property.propertyType || 'residential'}
+                        </span>
+                        {property.squareFeet && (
+                          <span>{property.squareFeet.toLocaleString()} sqft</span>
+                        )}
+                      </div>
+                      {property.owner && (
+                        <div className="text-xs text-hdi-text-secondary mt-1">
+                          Owner: {property.owner}
+                        </div>
+                      )}
+                    </div>
+                    <div className="ml-4 text-xs text-hdi-accent-cyan">
+                      →
+                    </div>
                   </div>
                 </motion.div>
               ))}
@@ -157,7 +194,7 @@ export const SearchBar: React.FC<SearchBarProps> = ({
             <div className="px-6 py-2 border-t border-hdi-accent-cyan/10 bg-hdi-bg-secondary/50">
               <div className="text-xs text-hdi-text-secondary flex items-center justify-between">
                 <span>↑↓ Navigate • Enter Select • Esc Close</span>
-                <span className="text-hdi-accent-teal">AI Enhanced</span>
+                <span className="text-hdi-accent-teal">{searchResults.length} results found</span>
               </div>
             </div>
           </motion.div>

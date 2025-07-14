@@ -6,7 +6,6 @@ import { PropertyPanel } from './components/PropertyPanel/PropertyPanel';
 import { StatusBar } from './components/StatusBar/StatusBar';
 import { LeadsFolder } from './components/LeadsFolder/LeadsFolder';
 import { WelcomeScreen } from './components/WelcomeScreen/WelcomeScreen';
-import { SearchResults } from './components/SearchResults/SearchResults';
 import { usePropertyManager, usePropertySearch, useApiStatus } from './hooks/usePropertyData';
 import type { Property } from './types/Property';
 
@@ -382,7 +381,6 @@ function App() {
   ]);
   const [searchQuery, setSearchQuery] = useState('');
   const [zoomLevel] = useState(1.0);
-  const [showSearchResults, setShowSearchResults] = useState(false);
 
   // Use API hooks
   const {
@@ -410,23 +408,16 @@ function App() {
   // Handle search
   const handleSearch = useCallback((query: string) => {
     setSearchQuery(query);
-    if (query.length >= 3) {
-      setShowSearchResults(true);
-    } else {
-      setShowSearchResults(false);
-    }
   }, []);
 
   // Handle search suggestion selection
   const handleSuggestionSelect = useCallback((suggestion: string) => {
     setSearchQuery(suggestion);
-    setShowSearchResults(false);
   }, []);
 
   // Handle search result property selection
   const handleSearchResultSelect = useCallback((property: Property) => {
     handlePropertySelect(property);
-    setShowSearchResults(false);
     setSearchQuery('');
   }, [handlePropertySelect]);
 
@@ -462,6 +453,22 @@ function App() {
   // Handle removing lead
   const handleRemoveLead = useCallback((leadId: string) => {
     setLeads(prev => prev.filter(lead => lead.id !== leadId));
+  }, []);
+
+  // Handle lead position update (drag and drop)
+  const handleLeadPositionUpdate = useCallback((leadId: string, newPosition: { x: number; y: number }) => {
+    setLeads(prev => prev.map(lead => 
+      lead.id === leadId 
+        ? { 
+            ...lead, 
+            gridPosition: { 
+              ...lead.gridPosition, 
+              x: newPosition.x, 
+              y: newPosition.y 
+            } 
+          }
+        : lead
+    ));
   }, []);
 
   // Handle lead click (opens property panel)
@@ -506,17 +513,10 @@ function App() {
           suggestions={searchData?.suggestions || []}
           onSuggestionSelect={handleSuggestionSelect}
           placeholder="Search Houston properties..."
+          searchResults={searchData?.properties || []}
+          onPropertySelect={handleSearchResultSelect}
         />
       </div>
-
-      {/* Search Results */}
-      <SearchResults
-        results={searchData?.properties || []}
-        isOpen={showSearchResults && searchQuery.length >= 3}
-        onSelectProperty={handleSearchResultSelect}
-        onClose={() => setShowSearchResults(false)}
-        searchQuery={searchQuery}
-      />
 
       {/* Main Grid Canvas */}
       <div className="absolute inset-0">
@@ -535,6 +535,7 @@ function App() {
             selectedPropertyId={selectedProperty?.id}
             showOnlyLeads={true}
             leads={leads}
+            onLeadPositionUpdate={handleLeadPositionUpdate}
           />
         )}
       </div>
