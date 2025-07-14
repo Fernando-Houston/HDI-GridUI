@@ -16,10 +16,117 @@ interface Lead extends Property {
 }
 
 function App() {
-  const [showWelcome, setShowWelcome] = useState(true);
+  const [showWelcome, setShowWelcome] = useState(false); // Skip welcome when leads are pre-loaded
   const [isPanelOpen, setIsPanelOpen] = useState(false);
   const [isLeadsFolderOpen, setIsLeadsFolderOpen] = useState(false);
-  const [leads, setLeads] = useState<Lead[]>([]);
+  const [leads, setLeads] = useState<Lead[]>([
+    // Pre-populated Houston deals from your spreadsheet
+    {
+      id: 'deal-1',
+      address: '4603 Market St, Houston TX 77020',
+      owner: 'DAVIS & DAVIS LP',
+      latitude: 29.772487,
+      longitude: -95.324041,
+      propertyType: 'residential',
+      marketValue: 450000,
+      landValue: 26000,
+      squareFeet: 18000,
+      yearBuilt: 0,
+      accountNumber: '0402570000043',
+      estimatedValueRange: { min: 440000, max: 480000 },
+      rentalEstimate: 0,
+      investmentScore: 75,
+      neighborhoodTrend: { trend: 'warming', yoyChange: 5.2 },
+      gridPosition: { x: 400, y: 300, size: 65 },
+      addedDate: new Date(),
+      status: 'interested',
+      notes: 'HCAD Value: $450,000'
+    },
+    {
+      id: 'deal-2',
+      address: '5133 San Juan St, Houston TX 77020',
+      owner: 'JOLIET DELORIS',
+      latitude: 29.7420,
+      longitude: -95.3188,
+      propertyType: 'residential',
+      marketValue: 137000,
+      landValue: 34300,
+      squareFeet: 4000,
+      yearBuilt: 0,
+      accountNumber: '',
+      estimatedValueRange: { min: 130000, max: 150000 },
+      rentalEstimate: 0,
+      investmentScore: 70,
+      neighborhoodTrend: { trend: 'stable', yoyChange: 3.1 },
+      gridPosition: { x: 450, y: 350, size: 50 },
+      addedDate: new Date(),
+      status: 'interested',
+      notes: 'Price: $137,000'
+    },
+    {
+      id: 'deal-3',
+      address: '5203 Garnet St, Houston TX',
+      owner: 'CARRILLO ROMERO JR & HECTOR',
+      latitude: 29.7400,
+      longitude: -95.3200,
+      propertyType: 'residential',
+      marketValue: 164000,
+      landValue: 32800,
+      squareFeet: 5000,
+      yearBuilt: 0,
+      accountNumber: '',
+      estimatedValueRange: { min: 160000, max: 175000 },
+      rentalEstimate: 0,
+      investmentScore: 72,
+      neighborhoodTrend: { trend: 'warming', yoyChange: 4.5 },
+      gridPosition: { x: 500, y: 400, size: 55 },
+      addedDate: new Date(),
+      status: 'interested',
+      notes: 'Price: $164,000'
+    },
+    {
+      id: 'deal-4',
+      address: '5216 Arapahoe St, Houston TX',
+      owner: 'LEVINE LOUIS JR',
+      latitude: 29.7380,
+      longitude: -95.3220,
+      propertyType: 'residential',
+      marketValue: 240000,
+      landValue: 28900,
+      squareFeet: 8300,
+      yearBuilt: 0,
+      accountNumber: '',
+      estimatedValueRange: { min: 235000, max: 255000 },
+      rentalEstimate: 0,
+      investmentScore: 78,
+      neighborhoodTrend: { trend: 'warming', yoyChange: 6.2 },
+      gridPosition: { x: 520, y: 420, size: 60 },
+      addedDate: new Date(),
+      status: 'interested',
+      notes: 'Price: $240,000'
+    },
+    {
+      id: 'deal-5',
+      address: '4742 Providence St, Houston TX',
+      owner: 'JONES SHIRLEY A',
+      latitude: 29.7450,
+      longitude: -95.3180,
+      propertyType: 'residential',
+      marketValue: 175000,
+      landValue: 28700,
+      squareFeet: 8100,
+      yearBuilt: 0,
+      accountNumber: '',
+      estimatedValueRange: { min: 170000, max: 185000 },
+      rentalEstimate: 0,
+      investmentScore: 74,
+      neighborhoodTrend: { trend: 'stable', yoyChange: 3.8 },
+      gridPosition: { x: 480, y: 380, size: 58 },
+      addedDate: new Date(),
+      status: 'interested',
+      notes: 'Price: $175,000'
+    }
+  ]);
   const [searchQuery, setSearchQuery] = useState('');
   const [zoomLevel] = useState(1.0);
 
