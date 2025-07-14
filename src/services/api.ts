@@ -138,7 +138,7 @@ class ApiService {
       };
     } catch (error) {
       // If search fails, fall back to mock data
-      return this.getMockData(endpoint);
+      return this.getMockData('/search');
     }
   }
 

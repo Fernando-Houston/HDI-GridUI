@@ -13,8 +13,8 @@ interface SearchBarProps {
 
 export const SearchBar: React.FC<SearchBarProps> = ({
   onSearch,
-  suggestions,
-  onSuggestionSelect,
+  suggestions: _suggestions,
+  onSuggestionSelect: _onSuggestionSelect,
   placeholder = "Search Houston properties...",
   searchResults = [],
   onPropertySelect
@@ -76,13 +76,7 @@ export const SearchBar: React.FC<SearchBarProps> = ({
     }
   };
 
-  // Handle suggestion click
-  const handleSuggestionClick = (suggestion: string) => {
-    setQuery(suggestion);
-    setShowSuggestions(false);
-    setSelectedIndex(-1);
-    onSuggestionSelect(suggestion);
-  };
+  // Handle suggestion click - removed as we're using property results instead
 
   // Handle property click
   const handlePropertyClick = (property: Property) => {
