@@ -104,13 +104,14 @@ export const usePropertyManager = () => {
   } = useNearbyProperties(gridCenter.lat, gridCenter.lng);
 
   // Get details for selected property
+  // NOTE: API doesn't have property details endpoint yet, so we'll use the data we already have
   const { 
     data: selectedPropertyDetails,
     isLoading: isLoadingDetails,
     error: detailsError
   } = usePropertyDetails(
-    selectedProperty?.address || '', 
-    !!selectedProperty?.address
+    '', // Disable this for now since API doesn't have this endpoint
+    false // Always disabled
   );
 
   // Transform properties to ensure they have required fields
