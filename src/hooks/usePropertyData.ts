@@ -41,11 +41,12 @@ export const useNearbyProperties = (
   lat: number, 
   lng: number, 
   radius: number = 1,
-  enabled: boolean = true
+  enabled: boolean = true,
+  limit: number = 100
 ) => {
   return useQuery({
-    queryKey: ['nearbyProperties', lat, lng, radius],
-    queryFn: () => apiService.getNearbyProperties(lat, lng, radius),
+    queryKey: ['nearbyProperties', lat, lng, radius, limit],
+    queryFn: () => apiService.getNearbyProperties(lat, lng, radius, limit),
     enabled: enabled,
     staleTime: 10 * 60 * 1000, // 10 minutes
     gcTime: 20 * 60 * 1000, // 20 minutes
@@ -101,7 +102,7 @@ export const usePropertyManager = () => {
     isLoading: isLoadingNearby,
     error: nearbyError,
     refetch: refetchNearby
-  } = useNearbyProperties(gridCenter.lat, gridCenter.lng);
+  } = useNearbyProperties(gridCenter.lat, gridCenter.lng, 5, true, 1000); // Increased radius and limit
 
   // Get details for selected property
   // NOTE: API doesn't have property details endpoint yet, so we'll use the data we already have

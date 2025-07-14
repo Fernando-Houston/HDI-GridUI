@@ -153,9 +153,9 @@ class ApiService {
     lat: number, 
     lng: number, 
     radius: number = 1,
-    _limit: number = 100
+    limit: number = 100
   ): Promise<PropertySearchResult> {
-    const endpoint = `/properties/location?lat=${lat}&lon=${lng}&radius_miles=${radius}`;
+    const endpoint = `/properties/location?lat=${lat}&lon=${lng}&radius_miles=${radius}&limit=${limit}`;
     return this.fetchWithErrorHandling<PropertySearchResult>(endpoint);
   }
 

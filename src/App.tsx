@@ -16,7 +16,7 @@ interface Lead extends Property {
 }
 
 function App() {
-  const [showWelcome, setShowWelcome] = useState(false); // Skip welcome when leads are pre-loaded
+  const [showWelcome, setShowWelcome] = useState(true); // Show welcome screen
   const [isPanelOpen, setIsPanelOpen] = useState(false);
   const [isLeadsFolderOpen, setIsLeadsFolderOpen] = useState(false);
   const [leads, setLeads] = useState<Lead[]>([
