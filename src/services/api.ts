@@ -3,7 +3,7 @@ import type { Property, PropertySearchResult } from '../types/Property';
 // API Configuration
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://hdi-api-production.up.railway.app';
 const API_VERSION = import.meta.env.VITE_API_VERSION || 'v1';
-const USE_MOCK_DATA = import.meta.env.VITE_USE_MOCK_DATA === 'true';
+const USE_MOCK_DATA = import.meta.env.VITE_USE_MOCK_DATA === 'true' || false;
 
 // Fallback to mock data if needed
 import { mockProperties, mockSearchSuggestions } from '../data/mockProperties';
@@ -47,9 +47,9 @@ class ApiService {
   }
 
   // Determine if we should fallback to mock data
-  private shouldFallbackToMock(endpoint: string): boolean {
-    // Always fallback to mock data until CORS is fixed on Railway API
-    return true;
+  private shouldFallbackToMock(_endpoint: string): boolean {
+    // Try to use real API with correct base URL
+    return false;
   }
 
   // Get mock data based on endpoint
@@ -104,7 +104,7 @@ class ApiService {
     radius: number = 1,
     limit: number = 100
   ): Promise<PropertySearchResult> {
-    const endpoint = `/properties/nearby?lat=${lat}&lng=${lng}&radius=${radius}&limit=${limit}`;
+    const endpoint = `/properties/location?lat=${lat}&lon=${lng}&radius_miles=${radius}`;
     return this.fetchWithErrorHandling<PropertySearchResult>(endpoint);
   }
 
